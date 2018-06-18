@@ -25,7 +25,7 @@
 *     }
 * }
 * @endcode
-* @file          lib_SHT25.h 
+* @file          lib_SHT25.cpp
 * @date          Jun 2018
 * @author        Yannic Simon
 */
