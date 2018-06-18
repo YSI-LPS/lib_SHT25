@@ -63,11 +63,11 @@ class SHT25
         
         /** return Temperature(°C) and Humidity
         *
-        * @param variable address to return Temperature
-        * @param variable address to return Humidity
+        * @param tempC address to return Temperature
+        * @param relHumidity address to return Humidity
         * @returns none
         */ 
-        void getData(float *, float *);
+        void getData(float *tempC, float *relHumidity)
         
         /** return Temperature(°C)
         *
