@@ -47,6 +47,9 @@
 #define SHT_PREC_0812       0x01    //RH 8  T 10 
 #define SHT_PREC_1013       0x80    //RH 10 T 13
 #define SHT_PREC_1111       0x81    //RH 10 T 13
+#define SHT_WAIT_TEMP       0x55    //Sensor Temp measure
+#define SHT_WAIT_RH         0x1D    //Sensor RH measure
+#define SHT_WAIT_SET        0x0F    //Sensor (re)set
 
 /** SHT25 class
  */
@@ -67,7 +70,7 @@ class SHT25
         * @param relHumidity address to return Humidity
         * @returns none
         */ 
-        void getData(float *tempC, float *relHumidity)
+        void getData(float *tempC, float *relHumidity);
         
         /** return Temperature(°C)
         *
@@ -86,14 +89,14 @@ class SHT25
         /** set data precision 
         *
         * @param precision like SHT_PREC_RHTT (SHT_PREC_1214, SHT_PREC_0812, SHT_PREC_1013, SHT_PREC_1111)
-        * @returns I2C acknoledge
+        * @returns true on I2C acknoledge
         */  
-        int setPrecision(char precision);
+        bool setPrecision(char precision);
         
         /** soft reset the sensor
         *
         * @param none
-        * @returns boolean on I2C acknoledge
+        * @returns true on I2C acknoledge
         */  
         bool softReset(void);
     protected:

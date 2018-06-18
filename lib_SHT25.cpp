@@ -33,8 +33,8 @@
 
 SHT25::SHT25(PinName sda, PinName scl) : _i2c(sda, scl)
 {
+    wait_ms(SHT_WAIT_SET);
     softReset();
-    wait_ms(100);
     setPrecision(SHT_PREC_1214);
     _selfHeat = true;
 }
@@ -45,7 +45,7 @@ float SHT25::getTemperature(void)
     {
         _selfHeat = false;
         _t.attach(callback(this, &SHT25::keepSelf), SHT_SELF_HEATING);
-        return readTemperature();
+        return _temperature = readTemperature();
     }
     return _temperature;
 }
@@ -54,11 +54,13 @@ float SHT25::readTemperature(void)
 {
     char command[1] = {SHT_TRIG_TEMP}, rx[3] = {0xFF, 0xFF, 0xFF};
     
-    _i2c.write(SHT_I2C_ADDR, command, 1, false);
-    wait_ms(85);
-    _i2c.read(SHT_I2C_ADDR, rx, 3, false);
-    
-    return _temperature = -46.85 + 175.72 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
+    if(!_i2c.write(SHT_I2C_ADDR, command, 1, false))
+    {
+        wait_ms(SHT_WAIT_TEMP);
+        if(!_i2c.read(SHT_I2C_ADDR, rx, 3, false))
+            return -46.85 + 175.72 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
+    }
+    return NAN;
 }
 
 float SHT25::getHumidity(void)
@@ -67,7 +69,7 @@ float SHT25::getHumidity(void)
     {
         _selfHeat = false;
         _t.attach(callback(this, &SHT25::keepSelf), SHT_SELF_HEATING);
-        return readHumidity();
+        return _humidity = readHumidity();
     }
     return _humidity;
 }
@@ -76,11 +78,13 @@ float SHT25::readHumidity(void)
 {
     char command[1] = {SHT_TRIG_RH}, rx[3] = {0xFF, 0xFF, 0xFF};
     
-    _i2c.write(SHT_I2C_ADDR, command, 1, false);
-    wait_ms(29);
-    _i2c.read(SHT_I2C_ADDR, rx, 3, false);
-    
-    return _humidity = -6.0 + 125.0 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
+    if(!_i2c.write(SHT_I2C_ADDR, command, 1, false))
+    {
+        wait_ms(SHT_WAIT_RH);
+        if(!_i2c.read(SHT_I2C_ADDR, rx, 3, false))
+            return -6.0 + 125.0 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
+    }
+    return NAN;
 }
 
 void SHT25::getData(float *tempC, float *relHumidity)
@@ -91,32 +95,41 @@ void SHT25::getData(float *tempC, float *relHumidity)
         _t.attach(callback(this, &SHT25::keepSelf), SHT_SELF_HEATING);
         readData(tempC, relHumidity);
     }
+    else
+    {
+        *tempC = _temperature;
+        *relHumidity = _humidity;
+    }
 }
 
 void SHT25::readData(float *tempC, float *relHumidity)
 {
-    *tempC = readTemperature();
-    *relHumidity = readHumidity();
+    *tempC = _temperature = readTemperature();
+    *relHumidity = _humidity = readHumidity();
 }
 
-int SHT25::setPrecision(char precision)
+bool SHT25::setPrecision(char precision)
 {
     char command[2] = {SHT_WRITE_REG, precision};
 
-    return _i2c.write(SHT_I2C_ADDR, command, 2, false);
+    if(!_i2c.write(SHT_I2C_ADDR, command, 2, false))
+    {
+        wait_ms(SHT_WAIT_SET);
+        return true;
+    }
+    return false;
 }
 
 bool SHT25::softReset()
 {
     char command[1] = {SHT_SOFT_RESET};
     
-    if (_i2c.write(SHT_I2C_ADDR, command, 1, false) != 0)
+    if (!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_ms(15);
-        return false;
+        wait_ms(SHT_WAIT_SET);
+        return true;
     }
-    
-    return true;
+    return false;
 }
 
 void SHT25::keepSelf(void)
