@@ -12,16 +12,20 @@
 * #include "lib_SHT25.h"
 *  
 * Serial pc(USBTX, USBRX);
-* SHT25  sensor(p28, p27);
+* SHT25  sensor(I2C_SDA, I2C_SCL);
 * 
 * int main()
 * {
 *     float temperature, humidity;
 *     while(1)
 *     {
+*         temperature = sensor.getTemperature();
+*         humidity = sensor.getTemperature();
+*         pc.printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
+*         sensor.waitSafeHeat();
 *         sensor.getData(&temperature, &humidity);
-*         pc.printf("\rtemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
-*         wait(0.5);
+*         pc.printf("\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
+*         sensor.waitSafeHeat();
 *     }
 * }
 * @endcode
@@ -36,15 +40,16 @@ SHT25::SHT25(PinName sda, PinName scl) : _i2c(sda, scl)
     wait_ms(SHT_WAIT_SET);
     softReset();
     setPrecision(SHT_PREC_1214);
-    _selfHeat = true;
+    _temperature = _humidity = NAN;
+    _selfHeatTemperature = _selfHeatHumidity = true;
 }
 
 float SHT25::getTemperature(void)
 {
-    if(_selfHeat)
+    if(_selfHeatTemperature)
     {
-        _selfHeat = false;
-        _t.attach(callback(this, &SHT25::keepSelf), SHT_SELF_HEATING);
+        _selfHeatTemperature = false;
+        _t.attach(callback(this, &SHT25::keepSafeTemperature), SHT_SELF_HEATING);
         return _temperature = readTemperature();
     }
     return _temperature;
@@ -65,10 +70,10 @@ float SHT25::readTemperature(void)
 
 float SHT25::getHumidity(void)
 {
-    if(_selfHeat)
+    if(_selfHeatHumidity)
     {
-        _selfHeat = false;
-        _t.attach(callback(this, &SHT25::keepSelf), SHT_SELF_HEATING);
+        _selfHeatHumidity = false;
+        _h.attach(callback(this, &SHT25::keepSafeHumidity), SHT_SELF_HEATING);
         return _humidity = readHumidity();
     }
     return _humidity;
@@ -89,10 +94,11 @@ float SHT25::readHumidity(void)
 
 void SHT25::getData(float *tempC, float *relHumidity)
 {
-    if(_selfHeat)
+    if(_selfHeatTemperature && _selfHeatHumidity)
     {
-        _selfHeat = false;
-        _t.attach(callback(this, &SHT25::keepSelf), SHT_SELF_HEATING);
+        _selfHeatTemperature = _selfHeatHumidity = false;
+        _t.attach(callback(this, &SHT25::keepSafeTemperature), SHT_SELF_HEATING);
+        _h.attach(callback(this, &SHT25::keepSafeHumidity), SHT_SELF_HEATING);
         readData(tempC, relHumidity);
     }
     else
@@ -132,7 +138,18 @@ bool SHT25::softReset()
     return false;
 }
 
-void SHT25::keepSelf(void)
+void SHT25::waitSafeHeat(void)
 {
-    _selfHeat = true;
+    while(!_selfHeatTemperature || !_selfHeatHumidity)
+        wait_ms(SHT_WAIT_SET);
+}
+
+void SHT25::keepSafeTemperature(void)
+{
+    _selfHeatTemperature = true;
+}
+
+void SHT25::keepSafeHumidity(void)
+{
+    _selfHeatHumidity = true;
 }

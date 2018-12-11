@@ -12,16 +12,20 @@
 * #include "lib_SHT25.h"
 *  
 * Serial pc(USBTX, USBRX);
-* SHT25  sensor(p28, p27);
+* SHT25  sensor(I2C_SDA, I2C_SCL);
 * 
 * int main()
 * {
 *     float temperature, humidity;
 *     while(1)
 *     {
+*         temperature = sensor.getTemperature();
+*         humidity = sensor.getTemperature();
+*         pc.printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
+*         sensor.waitSafeHeat();
 *         sensor.getData(&temperature, &humidity);
-*         pc.printf("\rtemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
-*         wait(0.5);
+*         pc.printf("\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
+*         sensor.waitSafeHeat();
 *     }
 * }
 * @endcode
@@ -97,18 +101,26 @@ class SHT25
         *
         * @param none
         * @returns true on I2C acknoledge
-        */  
+        */
         bool softReset(void);
+        
+        /** wait safe heat for sensor
+        *
+        * @param none
+        * @returns none
+        */
+        void waitSafeHeat(void);
     protected:
         I2C     _i2c;
-        Timeout _t;
+        Timeout _t, _h;
     private:
         void  readData(float *, float *);
         float readTemperature(void);
         float readHumidity(void);
-        void  keepSelf(void);
+        void  keepSafeTemperature(void);
+        void  keepSafeHumidity(void);
         float _temperature, _humidity;
-        bool  _selfHeat;
+        bool  _selfHeatTemperature, _selfHeatHumidity;
 };
 
 #endif
