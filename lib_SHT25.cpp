@@ -37,7 +37,7 @@
 
 SHT25::SHT25(PinName sda, PinName scl) : _i2c(sda, scl)
 {
-    wait_ms(SHT_WAIT_SET);
+    wait_us(SHT_WAIT_US_SET);
     softReset();
     setPrecision(SHT_PREC_1214);
     _temperature = _humidity = NAN;
@@ -61,7 +61,7 @@ float SHT25::readTemperature(void)
     
     if(!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_ms(SHT_WAIT_TEMP);
+        wait_us(SHT_WAIT_US_TEMP);
         if(!_i2c.read(SHT_I2C_ADDR, rx, 3, false))
             return -46.85 + 175.72 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
     }
@@ -85,7 +85,7 @@ float SHT25::readHumidity(void)
     
     if(!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_ms(SHT_WAIT_RH);
+        wait_us(SHT_WAIT_US_RH);
         if(!_i2c.read(SHT_I2C_ADDR, rx, 3, false))
             return -6.0 + 125.0 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
     }
@@ -120,7 +120,7 @@ bool SHT25::setPrecision(char precision)
 
     if(!_i2c.write(SHT_I2C_ADDR, command, 2, false))
     {
-        wait_ms(SHT_WAIT_SET);
+        wait_us(SHT_WAIT_US_SET);
         return true;
     }
     return false;
@@ -132,7 +132,7 @@ bool SHT25::softReset()
     
     if (!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_ms(SHT_WAIT_SET);
+        wait_us(SHT_WAIT_US_SET);
         return true;
     }
     return false;
@@ -141,7 +141,7 @@ bool SHT25::softReset()
 void SHT25::waitSafeHeat(void)
 {
     while(!_selfHeatTemperature || !_selfHeatHumidity)
-        wait_ms(SHT_WAIT_SET);
+        wait_us(SHT_WAIT_US_SET);
 }
 
 void SHT25::keepSafeTemperature(void)

@@ -51,9 +51,9 @@
 #define SHT_PREC_0812       0x01    //RH 8  T 10 
 #define SHT_PREC_1013       0x80    //RH 10 T 13
 #define SHT_PREC_1111       0x81    //RH 10 T 13
-#define SHT_WAIT_TEMP       0x55    //Sensor Temp measure
-#define SHT_WAIT_RH         0x1D    //Sensor RH measure
-#define SHT_WAIT_SET        0x0F    //Sensor (re)set
+#define SHT_WAIT_US_TEMP    85000   //Sensor Temp measure
+#define SHT_WAIT_US_RH      29000   //Sensor RH measure
+#define SHT_WAIT_US_SET     15000   //Sensor (re)set
 
 /** SHT25 class
  */
