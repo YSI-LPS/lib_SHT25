@@ -8,7 +8,6 @@
 *
 * Example:
 * @code
-* #include "mbed.h"
 * #include "lib_SHT25.h"
 *  
 * Serial pc(USBTX, USBRX);
@@ -46,27 +45,33 @@
 #define SHT_WRITE_REG       0xE6    //Write to user register
 #define SHT_READ_REG        0xE7    //Read from user register
 #define SHT_SOFT_RESET      0xFE    //Soft reset the sensor
+#define SHT_WAIT_MS_TEMP    85      //Sensor Temp measure
+#define SHT_WAIT_MS_RH      29      //Sensor RH measure
+#define SHT_WAIT_MS_SET     15      //Sensor (re)set
+#define SHT_WAIT_MS(MS_DELAY)       (wait_us(MS_DELAY*1000))    //(ThisThread::sleep_for(MS_DELAY)) introduit un bug de l'adresse MAC avec le LPC1768
+#if MBED_MAJOR_VERSION > 5
+#define SHT_SELF_HEATING    1s      //Keep self heating
+#else
 #define SHT_SELF_HEATING    0x01    //Keep self heating
-#define SHT_PREC_1214       0x00    //RH 12 T 14 - default
-#define SHT_PREC_0812       0x01    //RH 8  T 10 
-#define SHT_PREC_1013       0x80    //RH 10 T 13
-#define SHT_PREC_1111       0x81    //RH 10 T 13
-#define SHT_WAIT_US_TEMP    85000   //Sensor Temp measure
-#define SHT_WAIT_US_RH      29000   //Sensor RH measure
-#define SHT_WAIT_US_SET     15000   //Sensor (re)set
+#endif
+
 
 /** SHT25 class
  */
 class SHT25
 {
     public:
+        /** enumerator of the different precision of the sensor
+        */
+        typedef enum { SHT_PREC_RH12T14 = 0x00, SHT_PREC_RH08T12 = 0x01, SHT_PREC_RH10T13 = 0x80, SHT_PREC_RH11T11 = 0x81 }
+            enum_sht_prec;
         /** make new SHT25 instance
         * connected to sda, scl I2C pins
         *
-        * @param sda I2C pin
-        * @param scl I2C pin
+        * @param sda I2C pin, default I2C_SDA
+        * @param scl I2C pin, default I2C_SCL
         */
-        SHT25(PinName sda, PinName scl);
+        SHT25(PinName sda = I2C_SDA, PinName scl = I2C_SCL);
         
         /** return Temperature(°C) and Humidity
         *
@@ -92,10 +97,10 @@ class SHT25
         
         /** set data precision 
         *
-        * @param precision like SHT_PREC_RHTT (SHT_PREC_1214, SHT_PREC_0812, SHT_PREC_1013, SHT_PREC_1111)
+        * @param precision { SHT_PREC_RH12T14 = 0x00, SHT_PREC_RH08T12 = 0x01, SHT_PREC_RH10T13 = 0x80, SHT_PREC_RH11T11 = 0x81 }
         * @returns true on I2C acknoledge
         */  
-        bool setPrecision(char precision);
+        bool setPrecision(const enum_sht_prec precision);
         
         /** soft reset the sensor
         *

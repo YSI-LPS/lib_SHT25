@@ -8,7 +8,6 @@
 *
 * Example:
 * @code
-* #include "mbed.h"
 * #include "lib_SHT25.h"
 *  
 * Serial pc(USBTX, USBRX);
@@ -37,9 +36,9 @@
 
 SHT25::SHT25(PinName sda, PinName scl) : _i2c(sda, scl)
 {
-    wait_us(SHT_WAIT_US_SET);
+    SHT_WAIT_MS(SHT_WAIT_MS_SET);
     softReset();
-    setPrecision(SHT_PREC_1214);
+    setPrecision(SHT_PREC_RH12T14);
     _temperature = _humidity = NAN;
     _selfHeatTemperature = _selfHeatHumidity = true;
 }
@@ -61,7 +60,7 @@ float SHT25::readTemperature(void)
     
     if(!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_us(SHT_WAIT_US_TEMP);
+        SHT_WAIT_MS(SHT_WAIT_MS_TEMP);
         if(!_i2c.read(SHT_I2C_ADDR, rx, 3, false))
             return -46.85 + 175.72 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
     }
@@ -85,7 +84,7 @@ float SHT25::readHumidity(void)
     
     if(!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_us(SHT_WAIT_US_RH);
+        SHT_WAIT_MS(SHT_WAIT_MS_RH);
         if(!_i2c.read(SHT_I2C_ADDR, rx, 3, false))
             return -6.0 + 125.0 * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0);
     }
@@ -114,13 +113,13 @@ void SHT25::readData(float *tempC, float *relHumidity)
     *relHumidity = _humidity = readHumidity();
 }
 
-bool SHT25::setPrecision(char precision)
+bool SHT25::setPrecision(const enum_sht_prec precision)
 {
     char command[2] = {SHT_WRITE_REG, precision};
 
     if(!_i2c.write(SHT_I2C_ADDR, command, 2, false))
     {
-        wait_us(SHT_WAIT_US_SET);
+        SHT_WAIT_MS(SHT_WAIT_MS_SET);
         return true;
     }
     return false;
@@ -132,7 +131,7 @@ bool SHT25::softReset()
     
     if (!_i2c.write(SHT_I2C_ADDR, command, 1, false))
     {
-        wait_us(SHT_WAIT_US_SET);
+        SHT_WAIT_MS(SHT_WAIT_MS_SET);
         return true;
     }
     return false;
@@ -141,7 +140,7 @@ bool SHT25::softReset()
 void SHT25::waitSafeHeat(void)
 {
     while(!_selfHeatTemperature || !_selfHeatHumidity)
-        wait_us(SHT_WAIT_US_SET);
+        SHT_WAIT_MS(SHT_WAIT_MS_SET);
 }
 
 void SHT25::keepSafeTemperature(void)
