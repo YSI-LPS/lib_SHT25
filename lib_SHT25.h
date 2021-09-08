@@ -48,7 +48,11 @@
 #define SHT_WAIT_MS_TEMP    85      //Sensor Temp measure
 #define SHT_WAIT_MS_RH      29      //Sensor RH measure
 #define SHT_WAIT_MS_SET     15      //Sensor (re)set
+#if defined(TARGET_LPC1768)
 #define SHT_WAIT_MS(MS_DELAY)       (wait_us(MS_DELAY*1000))    //(ThisThread::sleep_for(MS_DELAY)) introduit un bug de l'adresse MAC avec le LPC1768
+#else
+#define SHT_WAIT_MS(MS_DELAY)       (ThisThread::sleep_for(MS_DELAY*1ms))
+#endif
 #if MBED_MAJOR_VERSION > 5
 #define SHT_SELF_HEATING    1s      //Keep self heating
 #else
