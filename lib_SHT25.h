@@ -37,22 +37,16 @@
 
 #include "mbed.h"
 
-#define SHT_I2C_ADDR        0x80    //Sensor I2C address
+#define SHT_I2C_FREQUENCY   400e3   //Sensor I2C Frequency max 400KHz
+#define SHT_I2C_ADDR_WRITE  0x80    //Sensor I2C address write
+#define SHT_I2C_ADDR_READ   0x81    //Sensor I2C address read
 #define SHT_TRIG_TEMP_HOLD  0xE3    //Trigger Temp  with hold master
 #define SHT_TRIG_RH_HOLD    0xE5    //Trigger RH    with hold master
-#define SHT_TRIG_TEMP       0xF3    //Trigger Temp  with no hold master
-#define SHT_TRIG_RH         0xF5    //Trigger RH    with no hold master
-#define SHT_WRITE_REG       0xE6    //Write to user register
-#define SHT_READ_REG        0xE7    //Read from user register
+#define SHT_TRIG_TEMP_NHOLD 0xF3    //Trigger Temp  with no hold master
+#define SHT_TRIG_RH_NHOLD   0xF5    //Trigger RH    with no hold master
+#define SHT_WRITE_REG_USER  0xE6    //Write to user register
+#define SHT_READ_REG_USER   0xE7    //Read from user register
 #define SHT_SOFT_RESET      0xFE    //Soft reset the sensor
-#define SHT_WAIT_MS_TEMP    85      //Sensor Temp measure
-#define SHT_WAIT_MS_RH      29      //Sensor RH measure
-#define SHT_WAIT_MS_SET     15      //Sensor (re)set
-#if defined(TARGET_LPC1768)
-#define SHT_WAIT_MS(MS_DELAY)       (wait_us(MS_DELAY*1000))    //(ThisThread::sleep_for(MS_DELAY)) introduit un bug de l'adresse MAC avec le LPC1768
-#else
-#define SHT_WAIT_MS(MS_DELAY)       (ThisThread::sleep_for(MS_DELAY*1ms))
-#endif
 #if MBED_MAJOR_VERSION > 5
 #define SHT_SELF_HEATING    1s      //Keep self heating
 #else
@@ -75,7 +69,7 @@ class SHT25
         * @param sda I2C pin, default I2C_SDA
         * @param scl I2C pin, default I2C_SCL
         */
-        SHT25(PinName sda = I2C_SDA, PinName scl = I2C_SCL);
+        SHT25(PinName sda = I2C_SDA, PinName scl = I2C_SCL, enum_sht_prec prec = SHT_PREC_RH12T14, int frequency = SHT_I2C_FREQUENCY);
         
         /** return Temperature(°C) and Humidity
         *
