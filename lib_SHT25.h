@@ -47,6 +47,8 @@
 #define SHT_WRITE_REG_USER  0xE6    //Write to user register
 #define SHT_READ_REG_USER   0xE7    //Read from user register
 #define SHT_SOFT_RESET      0xFE    //Soft reset the sensor
+#define SHT_TEMP_MEASURE    85e3    //Waiting to measure T on 14bit
+#define SHT_HUM_MEASURE     29e3    //Waiting to measure H on 12bit
 #if MBED_MAJOR_VERSION > 5
 #define SHT_SELF_HEATING    1s      //Keep self heating
 #else
@@ -66,10 +68,12 @@ class SHT25
         /** make new SHT25 instance
         * connected to sda, scl I2C pins
         *
-        * @param sda I2C pin, default I2C_SDA
-        * @param scl I2C pin, default I2C_SCL
+        * @param sda I2C pin
+        * @param scl I2C pin
+        * @param precision SHT25 precision for humidity(default 12 bits) and temperature(default 14 bits)
+        * @param frequency I2C frequency, default and maximum 400KHz
         */
-        SHT25(PinName sda = I2C_SDA, PinName scl = I2C_SCL, enum_sht_prec prec = SHT_PREC_RH12T14, int frequency = SHT_I2C_FREQUENCY);
+        SHT25(PinName sda, PinName scl, enum_sht_prec precision = SHT_PREC_RH12T14, int frequency = SHT_I2C_FREQUENCY);
         
         /** return Temperature(°C) and Humidity
         *
@@ -124,6 +128,7 @@ class SHT25
         void  keepSafeHumidity(void);
         float _temperature, _humidity;
         bool  _selfHeatTemperature, _selfHeatHumidity;
+        char _rxT[3];
 };
 
 #endif
