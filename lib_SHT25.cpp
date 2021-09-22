@@ -34,10 +34,10 @@
 */
 #include "lib_SHT25.h"
 
-SHT25::SHT25(PinName sda, PinName scl, enum_sht_prec prec, int frequency) : _i2c(sda, scl)
+SHT25::SHT25(PinName sda, PinName scl, enum_sht_prec precision, int frequency) : _i2c(sda, scl)
 {
-    _i2c.frequency(frequency);
-    setPrecision(prec);
+    _i2c.frequency((frequency<=SHT_I2C_FREQUENCY)?frequency:SHT_I2C_FREQUENCY);
+    setPrecision(precision);
     _temperature = _humidity = NAN;
     _selfHeatTemperature = _selfHeatHumidity = false;
     _t.attach(callback(this, &SHT25::keepSafeTemperature), SHT_SELF_HEATING);
@@ -65,12 +65,13 @@ float SHT25::getTemperature(void)
     return _temperature;
 }
 
-float SHT25::readTemperature(void)
+float SHT25::readTemperature(void) // if I2C Freezing go down PullUp resistor to 1K or slow frequency
 {
     char cmd[1] = {SHT_TRIG_TEMP_NHOLD}, rx[3] = {0xFF, 0xFF, 0xFF};
     if(!_i2c.write(SHT_I2C_ADDR_WRITE, cmd, 1, false))
     {
-        for(int i = 0; _i2c.read(SHT_I2C_ADDR_READ, rx, 3, false) && (i < 1889); i++);  //1889*45ms(time to read at 400KHz) = 85ms(time max to measure T on 14bit)
+        wait_us(SHT_TEMP_MEASURE);
+        _i2c.read(SHT_I2C_ADDR_READ, rx, 3, false);
         _selfHeatTemperature = false;
         _t.attach(callback(this, &SHT25::keepSafeTemperature), SHT_SELF_HEATING);
         return -46.85f + 175.72f * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0f);
@@ -85,12 +86,13 @@ float SHT25::getHumidity(void)
     return _humidity;
 }
 
-float SHT25::readHumidity(void)
+float SHT25::readHumidity(void) // if I2C Freezing go down PullUp resistor to 1K or slow frequency
 {
     char cmd[1] = {SHT_TRIG_RH_NHOLD}, rx[3] = {0xFF, 0xFF, 0xFF};
     if(!_i2c.write(SHT_I2C_ADDR_WRITE, cmd, 1, false))
     {
-        for(int i = 0; _i2c.read(SHT_I2C_ADDR_READ, rx, 3, false) && (i < 667); i++);   //667*45ms(time to read at 400KHz) = 30ms(time max to measure RH on 12bit)
+        wait_us(SHT_HUM_MEASURE);
+        _i2c.read(SHT_I2C_ADDR_READ, rx, 3, false);
         _selfHeatHumidity = false;
         _h.attach(callback(this, &SHT25::keepSafeHumidity), SHT_SELF_HEATING);
         return -6.0f + 125.0f * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0f);
