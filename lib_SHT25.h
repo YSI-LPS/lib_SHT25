@@ -9,22 +9,19 @@
 * Example:
 * @code
 * #include "lib_SHT25.h"
-*  
-* Serial pc(USBTX, USBRX);
+* 
 * SHT25  sensor(I2C_SDA, I2C_SCL);
 * 
 * int main()
 * {
-*     float temperature, humidity;
 *     while(1)
 *     {
-*         temperature = sensor.getTemperature();
-*         humidity = sensor.getTemperature();
-*         pc.printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
+*         sensor.waitSafeHeat();
+*         float temperature = sensor.getTemperature(), humidity = sensor.getHumidity();
+*         printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
 *         sensor.waitSafeHeat();
 *         sensor.getData(&temperature, &humidity);
-*         pc.printf("\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
-*         sensor.waitSafeHeat();
+*         printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
 *     }
 * }
 * @endcode
@@ -37,9 +34,8 @@
 
 #include "mbed.h"
 
-#define SHT_I2C_FREQUENCY   400e3   //Sensor I2C Frequency max 400KHz
-#define SHT_I2C_ADDR_WRITE  0x80    //Sensor I2C address write
-#define SHT_I2C_ADDR_READ   0x81    //Sensor I2C address read
+#define SHT_I2C_FREQUENCY   100e3   //Sensor I2C Frequency max 400KHz
+#define SHT_I2C_ADDR        0x80    //Sensor I2C address
 #define SHT_TRIG_TEMP_HOLD  0xE3    //Trigger Temp  with hold master
 #define SHT_TRIG_RH_HOLD    0xE5    //Trigger RH    with hold master
 #define SHT_TRIG_TEMP_NHOLD 0xF3    //Trigger Temp  with no hold master
@@ -47,12 +43,12 @@
 #define SHT_WRITE_REG_USER  0xE6    //Write to user register
 #define SHT_READ_REG_USER   0xE7    //Read from user register
 #define SHT_SOFT_RESET      0xFE    //Soft reset the sensor
-#define SHT_TEMP_MEASURE    85e3    //Waiting to measure T on 14bit
-#define SHT_HUM_MEASURE     29e3    //Waiting to measure H on 12bit
 #if MBED_MAJOR_VERSION > 5
-#define SHT_SELF_HEATING    1s      //Keep self heating
+#define SHT_SELF_HEATING    2s      //Keep self heating
+#define SHT_WAIT(ms)        (thread_sleep_for(ms))
 #else
 #define SHT_SELF_HEATING    0x01    //Keep self heating
+#define SHT_WAIT(ms)        (wait_us(1000*ms))
 #endif
 
 
@@ -71,7 +67,7 @@ class SHT25
         * @param sda I2C pin
         * @param scl I2C pin
         * @param precision SHT25 precision for humidity(default 12 bits) and temperature(default 14 bits)
-        * @param frequency I2C frequency, default and maximum 400KHz
+        * @param frequency I2C frequency, default 100KHz and maximum 400KHz
         */
         SHT25(PinName sda, PinName scl, enum_sht_prec precision = SHT_PREC_RH12T14, int frequency = SHT_I2C_FREQUENCY);
         
@@ -121,14 +117,13 @@ class SHT25
         I2C     _i2c;
         Timeout _t, _h;
     private:
-        void  readData(float *, float *);
+        void  readData(void);
         float readTemperature(void);
         float readHumidity(void);
         void  keepSafeTemperature(void);
         void  keepSafeHumidity(void);
         float _temperature, _humidity;
         bool  _selfHeatTemperature, _selfHeatHumidity;
-        char _rxT[3];
 };
 
 #endif

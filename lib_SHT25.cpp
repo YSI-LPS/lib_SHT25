@@ -9,22 +9,19 @@
 * Example:
 * @code
 * #include "lib_SHT25.h"
-*  
-* Serial pc(USBTX, USBRX);
+* 
 * SHT25  sensor(I2C_SDA, I2C_SCL);
 * 
 * int main()
 * {
-*     float temperature, humidity;
 *     while(1)
 *     {
-*         temperature = sensor.getTemperature();
-*         humidity = sensor.getTemperature();
-*         pc.printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
+*         sensor.waitSafeHeat();
+*         float temperature = sensor.getTemperature(), humidity = sensor.getHumidity();
+*         printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
 *         sensor.waitSafeHeat();
 *         sensor.getData(&temperature, &humidity);
-*         pc.printf("\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
-*         sensor.waitSafeHeat();
+*         printf("\r\ntemperature = %6.2f%cC -|- humidity = %6.2f%%RH", temperature, 248, humidity);
 *     }
 * }
 * @endcode
@@ -36,7 +33,7 @@
 
 SHT25::SHT25(PinName sda, PinName scl, enum_sht_prec precision, int frequency) : _i2c(sda, scl)
 {
-    _i2c.frequency((frequency<=SHT_I2C_FREQUENCY)?frequency:SHT_I2C_FREQUENCY);
+    _i2c.frequency((frequency<=400e3)?frequency:400e3);
     setPrecision(precision);
     _temperature = _humidity = NAN;
     _selfHeatTemperature = _selfHeatHumidity = false;
@@ -46,70 +43,72 @@ SHT25::SHT25(PinName sda, PinName scl, enum_sht_prec precision, int frequency) :
 
 void SHT25::getData(float *tempC, float *relHumidity)
 {
+    if(_selfHeatTemperature && _selfHeatHumidity) readData();
     *tempC = _temperature;
     *relHumidity = _humidity;
-    if(_selfHeatTemperature && _selfHeatHumidity)
-        readData(tempC, relHumidity);
 }
 
-void SHT25::readData(float *tempC, float *relHumidity)
+void SHT25::readData(void)
 {
-    *tempC = _temperature = readTemperature();
-    *relHumidity = _humidity = readHumidity();
+    _temperature = readTemperature();
+    _humidity = readHumidity();
 }
 
 float SHT25::getTemperature(void)
 {
-    if(_selfHeatTemperature)
-        _temperature = readTemperature();
+    if(_selfHeatTemperature) _temperature = readTemperature();
     return _temperature;
 }
 
-float SHT25::readTemperature(void) // if I2C Freezing go down PullUp resistor to 1K or slow frequency
+float SHT25::readTemperature(void) // if I2C Freezing go down PullUp resistor to 2K or slow frequency
 {
-    char cmd[1] = {SHT_TRIG_TEMP_NHOLD}, rx[3] = {0xFF, 0xFF, 0xFF};
-    if(!_i2c.write(SHT_I2C_ADDR_WRITE, cmd, 1, false))
+    char cmd[] = {SHT_TRIG_TEMP_NHOLD}, rx[] = {0xFF, 0xFF, 0xFF};
+    _selfHeatTemperature = false;
+    _t.attach(callback(this, &SHT25::keepSafeTemperature), SHT_SELF_HEATING);
+    if(!_i2c.write(SHT_I2C_ADDR, cmd, 1))
     {
-        wait_us(SHT_TEMP_MEASURE);
-        _i2c.read(SHT_I2C_ADDR_READ, rx, 3, false);
-        _selfHeatTemperature = false;
-        _t.attach(callback(this, &SHT25::keepSafeTemperature), SHT_SELF_HEATING);
-        return -46.85f + 175.72f * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0f);
+        SHT_WAIT(66);
+        int ack = _i2c.read(SHT_I2C_ADDR, rx, 3);
+        if(ack)
+        {
+            SHT_WAIT(19);
+            ack = _i2c.read(SHT_I2C_ADDR, rx, 3);    
+        }
+        return ack?NAN:-46.85f + 175.72f * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0f);
     }
     return NAN;
 }
 
 float SHT25::getHumidity(void)
 {
-    if(_selfHeatHumidity)
-        _humidity = readHumidity();
+    if(_selfHeatHumidity) _humidity = readHumidity();
     return _humidity;
 }
 
-float SHT25::readHumidity(void) // if I2C Freezing go down PullUp resistor to 1K or slow frequency
+float SHT25::readHumidity(void) // if I2C Freezing go down PullUp resistor to 2K or slow frequency
 {
-    char cmd[1] = {SHT_TRIG_RH_NHOLD}, rx[3] = {0xFF, 0xFF, 0xFF};
-    if(!_i2c.write(SHT_I2C_ADDR_WRITE, cmd, 1, false))
+    char cmd[] = {SHT_TRIG_RH_NHOLD}, rx[] = {0xFF, 0xFF, 0xFF};
+    _selfHeatHumidity = false;
+    _h.attach(callback(this, &SHT25::keepSafeHumidity), SHT_SELF_HEATING);
+    if(!_i2c.write(SHT_I2C_ADDR, cmd, 1))
     {
-        wait_us(SHT_HUM_MEASURE);
-        _i2c.read(SHT_I2C_ADDR_READ, rx, 3, false);
-        _selfHeatHumidity = false;
-        _h.attach(callback(this, &SHT25::keepSafeHumidity), SHT_SELF_HEATING);
-        return -6.0f + 125.0f * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0f);
+        SHT_WAIT(29);
+        int ack = _i2c.read(SHT_I2C_ADDR, rx, 3);
+        return ack?NAN:-6.0f + 125.0f * ((((rx[0] << 8) | rx[1]) & 0xFFFC) / 65536.0f);
     }
     return NAN;
 }
 
 bool SHT25::setPrecision(const enum_sht_prec precision)
 {
-    char cmd[2] = {SHT_WRITE_REG_USER, precision};
-    return !_i2c.write(SHT_I2C_ADDR_WRITE, cmd, 2, false);
+    char cmd[] = {SHT_WRITE_REG_USER, precision};
+    return !_i2c.write(SHT_I2C_ADDR, cmd, 2, false);
 }
 
 bool SHT25::softReset()
 {
-    char cmd[1] = {SHT_SOFT_RESET};
-    return !_i2c.write(SHT_I2C_ADDR_WRITE, cmd, 1, false);
+    char cmd[] = {SHT_SOFT_RESET};
+    return !_i2c.write(SHT_I2C_ADDR, cmd, 1, false);
 }
 
 void SHT25::waitSafeHeat(void)
