@@ -48,7 +48,7 @@
 #define SHT_WAIT(ms)        (thread_sleep_for(ms))
 #else
 #define SHT_SELF_HEATING    0x01    //Keep self heating
-#define SHT_WAIT(ms)        (wait_us(1000*ms))
+#define SHT_WAIT(ms)        (wait_us(1000*(ms)))
 #endif
 
 
